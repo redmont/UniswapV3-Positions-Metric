@@ -1,8 +1,123 @@
 import { Token } from "@uniswap/sdk-core";
 import { Pool, Position } from "@uniswap/v3-sdk";
-import { ethers, BigNumber } from "ethers";
-//import { tickToPrice } from "@uniswap/v3-sdk";
-import { getCurrentPrice, getPriceAtTimestamp } from "../services/coingecko";
+import { gql } from "@apollo/client";
+
+export const GET_USER_POSITIONS = gql`
+  query GetUserPositions($walletAddress: String!) {
+    positions(
+      orderBy: pool__createdAtTimestamp
+      where: { owner: $walletAddress }
+      first: 10
+    ) {
+      id
+      owner
+      depositedToken0
+      depositedToken1
+      liquidity
+      feeGrowthInside0LastX128
+      feeGrowthInside1LastX128
+      collectedFeesToken0
+      collectedFeesToken1
+      tickLower {
+        tickIdx
+        price0
+        price1
+        feeGrowthOutside0X128
+        feeGrowthOutside1X128
+      }
+      tickUpper {
+        tickIdx
+        price0
+        price1
+        feeGrowthOutside0X128
+        feeGrowthOutside1X128
+      }
+      pool {
+        id
+        feeTier
+        tick
+        sqrtPrice
+        token0Price
+        token1Price
+        feeGrowthGlobal0X128
+        feeGrowthGlobal1X128
+        collectedFeesUSD
+        collectedFeesToken1
+        collectedFeesToken0
+        liquidity
+        token0 {
+          id
+          symbol
+          name
+          decimals
+        }
+        token1 {
+          id
+          symbol
+          name
+          decimals
+        }
+      }
+      # This transaction field holds the ID of the creation transaction
+      transaction {
+        id
+        timestamp
+      }
+    }
+  }
+`;
+export const EVENTS_HISTORY_QUERY = gql`
+  query ($poolAddress: String!, $userAddress: String!) {
+    deposits(where: { pool: $poolAddress, user: $userAddress }) {
+      id
+      amount0
+      amount1
+      timestamp
+    }
+    withdrawals(where: { pool: $poolAddress, user: $userAddress }) {
+      id
+      amount0
+      amount1
+      timestamp
+    }
+    rewardClaims(where: { pool: $poolAddress, user: $userAddress }) {
+      id
+      amount
+      timestamp
+      token {
+        id
+      }
+      txHash
+    }
+    rewardInitiations(where: { pool: $poolAddress, user: $userAddress }) {
+      id
+      duration
+      rewards {
+        token {
+          id
+        }
+        amount
+      }
+      timestamp
+    }
+    vests(where: { pool: $poolAddress, beneficiary: $userAddress }) {
+      id
+      period
+      timestamp
+      token {
+        id
+      }
+      txHash
+      value
+    }
+    collects(where: { pool: $poolAddress }) {
+      id
+      timestamp
+      token0Fee
+      token1Fee
+    }
+  }
+`;
 
 export function tickToPrice(tick) {
   return Math.pow(1.0001, tick);
@@ -18,17 +133,11 @@ export const getInitialDepositValueInUSD = async (position) => {
     creationDate.getMonth() + 1
   }-${creationDate.getFullYear()}`;
 
-  // wait for 1 seconds
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-
-  const initialToken0PriceinUSD = await getPriceAtTimestamp(
+  const initialToken0PriceinUSD = await fetchPriceFromServer(
     token0.id,
     dateString
   );
-  // wait for 1 seconds
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-
-  const initialToken1PriceinUSD = await getPriceAtTimestamp(
+  const initialToken1PriceinUSD = await fetchPriceFromServer(
     token1.id,
     dateString
   );
@@ -104,11 +213,9 @@ export const calculateCurrentPositionValueUSD = async (
 
   // 5. Fetch the live USD prices
   // wait for 1 seconds
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  const price0 = await getCurrentPrice(pool.token0.id);
-  // wait for 1 seconds
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  const price1 = await getCurrentPrice(pool.token1.id);
+  //await new Promise((resolve) => setTimeout(resolve, 2000));
+  const price0 = await fetchPriceFromServer(pool.token0.id);
+  const price1 = await fetchPriceFromServer(pool.token1.id);
 
   console.log("ZZZprice0", price0, "price1", price1);
 
@@ -180,13 +287,9 @@ export const calculateTotalFeesUSD = async (positionData) => {
   console.log("unclaimedFees1", unclaimedFees1);
 
   // --- 2. Convert to USD ---
-  // wait for 1 seconds
-  await new Promise((resolve) => setTimeout(resolve, 2000));
 
-  const price0 = await getCurrentPrice(pool.token0.id);
-  // wait for 1 seconds
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  const price1 = await getCurrentPrice(pool.token1.id);
+  const price0 = await fetchPriceFromServer(pool.token0.id);
+  const price1 = await fetchPriceFromServer(pool.token1.id);
 
   console.log("price0", price0);
   console.log("price1", price1);
@@ -251,4 +354,29 @@ export const calculateAprApy = (
     apr: isFinite(apr) ? apr : 0, // Ensure we don't return Infinity or NaN
     apy: isFinite(apy) ? apy : 0,
   };
+};
+
+const fetchPriceFromServer = async (tokenAddress, date = null) => {
+  try {
+    const response = await fetch("/api/prices", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        tokenAddress: tokenAddress,
+        historicalDate: date, // Send a date to get historical price, or null for current
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch from API route");
+    }
+
+    const data = await response.json();
+    return data.price;
+  } catch (error) {
+    console.error(error);
+    return 0;
+  }
 };

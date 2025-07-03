@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { gql } from "@apollo/client";
 import graphClient from "../utils/apolloClient";
-import { getCoinsListFromLocalStorage } from "../services/coingecko";
+import {
+  getCoinsListFromLocalStorage,
+  getCoinsList,
+} from "../services/coingecko";
 import PositionCard from "../components/PositionCard";
 import {
   tickToPrice,
@@ -12,72 +15,9 @@ import {
   calculateTotalFeesUSD,
   totalPnlUSD,
   calculateAprApy,
+  GET_USER_POSITIONS,
+  EVENTS_HISTORY_QUERY,
 } from "../services/uniswap";
-
-const GET_USER_POSITIONS = gql`
-  query GetUserPositions($walletAddress: String!) {
-    positions(
-      orderBy: pool__createdAtTimestamp
-      where: { owner: $walletAddress }
-      first: 10
-    ) {
-      id
-      owner
-      depositedToken0
-      depositedToken1
-      liquidity
-      feeGrowthInside0LastX128
-      feeGrowthInside1LastX128
-      collectedFeesToken0
-      collectedFeesToken1
-      tickLower {
-        tickIdx
-        price0
-        price1
-        feeGrowthOutside0X128
-        feeGrowthOutside1X128
-      }
-      tickUpper {
-        tickIdx
-        price0
-        price1
-        feeGrowthOutside0X128
-        feeGrowthOutside1X128
-      }
-      pool {
-        id
-        feeTier
-        tick
-        sqrtPrice
-        token0Price
-        token1Price
-        feeGrowthGlobal0X128
-        feeGrowthGlobal1X128
-        collectedFeesUSD
-        collectedFeesToken1
-        collectedFeesToken0
-        liquidity
-        token0 {
-          id
-          symbol
-          name
-          decimals
-        }
-        token1 {
-          id
-          symbol
-          name
-          decimals
-        }
-      }
-      # This transaction field holds the ID of the creation transaction
-      transaction {
-        id
-        timestamp
-      }
-    }
-  }
-`;
 
 function getPositionStatus(position) {
   const { tickLower, tickUpper, pool } = position;
@@ -96,7 +36,6 @@ const HomePage = () => {
   const [walletAddress, setWalletAddress] = useState("");
   const [positions, setPositions] = useState([]);
   const [positionsList, setPositionsList] = useState([]);
-  const [currentPosition, setCurrentPosition] = useState("");
   const [loading, setLoading] = useState(false);
 
   console.log("positions", positions);
@@ -106,7 +45,7 @@ const HomePage = () => {
     if (!walletAddress) return;
     setLoading(true);
 
-    const allCoins = await getCoinsListFromLocalStorage();
+    const allCoins = await getCoinsList();
     console.log("allCoins", allCoins);
 
     try {
@@ -116,6 +55,19 @@ const HomePage = () => {
       });
 
       console.log("PositionsYYY", data.positions);
+
+      //   const { data2 } = await graphClient.query({
+      //     query: EVENTS_HISTORY_QUERY,
+      //     variables: {
+      //       poolAddress:
+      //         "0xf763bb342eb3d23c02ccb86312422fe0c1c17e94".toLowerCase(),
+      //       userAddress:
+      //         "0x365A7552E71f8127a0d6c3d48632f5f9Ab210ADa".toLowerCase(),
+      //     },
+      //   });
+
+      //   console.log("EventsYYY", data2);
+      //   return;
 
       const positionList = data.positions.map((pos) => {
         const isActive = getPositionStatus(pos) === "In Range";
@@ -143,15 +95,18 @@ const HomePage = () => {
           const createdAtTimestamp = pos.transaction.timestamp;
           const pool = pos.pool;
 
-          // Current Price
-          const currentPrice =
-            tickToPrice(pool.tick) / 10 ** pool.token0.decimals;
-
           // Price Range
           let lowerTickPrice = tickToPrice(parseInt(pos.tickLower.tickIdx));
           let upperTickPrice = tickToPrice(parseInt(pos.tickUpper.tickIdx));
-          lowerTickPrice = lowerTickPrice / 10 ** pool.token0.decimals;
-          upperTickPrice = upperTickPrice / 10 ** pool.token0.decimals;
+          lowerTickPrice =
+            lowerTickPrice *
+            (10 ** pool.token0.decimals / 10 ** pool.token1.decimals);
+          upperTickPrice =
+            upperTickPrice *
+            (10 ** pool.token0.decimals / 10 ** pool.token1.decimals);
+
+          // Current Price
+          const currentPrice = pool.token1Price;
 
           // Status
           const positionStatus = getPositionStatus(pos);

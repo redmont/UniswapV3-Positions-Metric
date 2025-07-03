@@ -103,7 +103,7 @@ const PositionCard = ({ position }) => (
         {new Date(position.createdAtTimestamp * 1000).toLocaleString()}
       </p>
       <p>
-        <strong>Total PNL:</strong> ${position.totalPnlInUSD.toFixed(2)}
+        <strong>Total PNL:</strong> {position.totalPnlInUSD.toFixed(2)} USD
         <br />
         (Current USD Value - Initial USD Value + Total Fees Earned)
       </p>
