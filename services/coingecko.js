@@ -2,9 +2,11 @@
 
 import axios from "axios";
 
-const coingeckoApiHeaders = {
-  "Content-Type": "application/json",
-  "x-cg-demo-api-key": process.env.COINGECKO_API_KEY || "",
+const options = {
+  headers: {
+    "Content-Type": "application/json",
+    "x-cg-demo-api-key": process.env.COINGECKO_API_KEY || "",
+  },
 };
 
 // 1. Create a cache object outside the function. A Map is great for this.
@@ -36,8 +38,8 @@ export const getPriceAtTimestamp = async (tokenAddress1, date) => {
     // 5. If not in cache, fetch from the API
     console.log(`Fetching new historical price for: ${cacheKey}`);
     const response = await axios.get(
-      `https://api.coingecko.com/api/v3/coins/${coinId1}/history?date=${date}&localization=false`
-      // { headers: coingeckoApiHeaders } // Ensure headers are defined if needed
+      `https://api.coingecko.com/api/v3/coins/${coinId1}/history?date=${date}&localization=false`,
+      options
     );
 
     const price = response.data?.market_data?.current_price?.usd;
@@ -56,7 +58,10 @@ export const getPriceAtTimestamp = async (tokenAddress1, date) => {
 
     return price;
   } catch (error) {
-    console.error(`Error fetching price for ${coinId1} on ${date}:`, error);
+    console.error(
+      `Error fetching price for ${tokenAddress1} on ${date}:`,
+      error
+    );
     return 0; // Return 0 on failure
   }
 };
@@ -95,11 +100,11 @@ export const getCurrentPrice = async (tokenAddress1, tokenAddress2) => {
     // 5. If not in cache or expired, fetch from the API
     console.log(`Fetching new price for: ${cacheKey}`);
     const response = await axios.get(
-      `https://api.coingecko.com/api/v3/simple/price?vs_currencies=${coinId2}&ids=${coinId1}`
-      // { headers: coingeckoApiHeaders } // Make sure you have these defined if needed
+      `https://api.coingecko.com/api/v3/simple/token_price/ethereum?vs_currencies=${coinId2}&contract_addresses=${tokenAddress1}`,
+      options
     );
 
-    const price = response.data[coinId1]?.[coinId2];
+    const price = response.data[tokenAddress1]?.[coinId2];
 
     if (price === undefined) {
       throw new Error(

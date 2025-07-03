@@ -18,10 +18,16 @@ export const getInitialDepositValueInUSD = async (position) => {
     creationDate.getMonth() + 1
   }-${creationDate.getFullYear()}`;
 
+  // wait for 1 seconds
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
   const initialToken0PriceinUSD = await getPriceAtTimestamp(
     token0.id,
     dateString
   );
+  // wait for 1 seconds
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
   const initialToken1PriceinUSD = await getPriceAtTimestamp(
     token1.id,
     dateString
@@ -87,14 +93,22 @@ export const calculateCurrentPositionValueUSD = async (
   console.log("ZZZamount0", amount0, "amount1", amount1);
 
   if (amount0 === 0 && amount1 === 0) {
-    return 0;
+    return {
+      currentPositionUSD: 0,
+      value0: 0,
+      value1: 0,
+      amount0: 0,
+      amount1: 0,
+    };
   }
 
   // 5. Fetch the live USD prices
-  const [price0, price1] = await Promise.all([
-    getCurrentPrice(pool.token0.id),
-    getCurrentPrice(pool.token1.id),
-  ]);
+  // wait for 1 seconds
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  const price0 = await getCurrentPrice(pool.token0.id);
+  // wait for 1 seconds
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  const price1 = await getCurrentPrice(pool.token1.id);
 
   console.log("ZZZprice0", price0, "price1", price1);
 
@@ -166,22 +180,32 @@ export const calculateTotalFeesUSD = async (positionData) => {
   console.log("unclaimedFees1", unclaimedFees1);
 
   // --- 2. Convert to USD ---
-  const [price0, price1] = await Promise.all([
-    getCurrentPrice(pool.token0.id),
-    getCurrentPrice(pool.token1.id),
-  ]);
+  // wait for 1 seconds
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  const price0 = await getCurrentPrice(pool.token0.id);
+  // wait for 1 seconds
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  const price1 = await getCurrentPrice(pool.token1.id);
 
   console.log("price0", price0);
   console.log("price1", price1);
 
   const unclaimedFeesUSD = unclaimedFees0 * price0 + unclaimedFees1 * price1;
+  const token0FeesCollected = parseFloat(collectedFeesToken0);
+  const token1FeesCollected = parseFloat(collectedFeesToken1);
+  console.log("IIIIIIIItoken0FeesCollected", token0FeesCollected);
+  console.log("XXXXXXXXtoken1FeesCollected", token1FeesCollected);
   const claimedFeesUSD =
-    parseFloat(collectedFeesToken0) * price0 +
-    parseFloat(collectedFeesToken1) * price1;
+    token0FeesCollected * price0 + token1FeesCollected * price1;
 
   const totalFeesUSD = unclaimedFeesUSD + claimedFeesUSD;
 
   return {
+    unclaimedFees0,
+    unclaimedFees1,
+    collectedFeesToken0,
+    collectedFeesToken1,
     totalFeesUSD,
     unclaimedFeesUSD,
     claimedFeesUSD,

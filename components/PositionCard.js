@@ -75,8 +75,19 @@ const PositionCard = ({ position }) => (
       <p>
         <strong>Fees:</strong>{" "}
         <li>
+          <strong>Unclaimed Fees:</strong> {position.feesInfo?.unclaimedFees0}{" "}
+          {position.pool.token0.symbol} + {position.feesInfo?.unclaimedFees1}{" "}
+          {position.pool.token1.symbol}
+        </li>
+        <li>
           <strong>Unclaimed Fees (in USD):</strong>{" "}
           {position.feesInfo?.unclaimedFeesUSD}{" "}
+        </li>
+        <li>
+          <strong>Claimed Fees:</strong>{" "}
+          {position.feesInfo?.collectedFeesToken0} {position.pool.token0.symbol}{" "}
+          + {position.feesInfo?.collectedFeesToken1}{" "}
+          {position.pool.token1.symbol}
         </li>
         <li>
           <strong>Claimed Fees (in USD):</strong>{" "}
