@@ -4,7 +4,8 @@ const PositionCard = ({ position }) => (
   <div className="card bg-base-100 shadow-xl">
     <div className="card-body">
       <h2 className="card-title">
-        Position ID: {position.id} ({position.isActive ? "Active" : "Inactive"})
+        Position ID: {position.id} ({position.isActive ? "Active" : "Inactive"},{" "}
+        {position.positionStatus})
       </h2>
 
       <p>
