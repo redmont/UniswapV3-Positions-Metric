@@ -8,7 +8,7 @@ export const GET_USER_POSITIONS1 = gql`
       orderBy: transaction__timestamp
       orderDirection: desc
       where: { owner: $walletAddress }
-      first: 1000
+      first: 20
     ) {
       id
       owner
@@ -61,7 +61,7 @@ export const GET_USER_POSITIONS2 = gql`
       orderBy: transaction__timestamp
       orderDirection: desc
       where: { owner: $walletAddress }
-      first: 1000
+      first: 20
     ) {
       id
       owner
