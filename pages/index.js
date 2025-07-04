@@ -197,32 +197,6 @@ const HomePage = () => {
             0xf02f301f14f4ae52df21da91bab40993a3e3d07c
           </div>
         </div>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            marginRight: "10%",
-            width: "60%",
-          }}
-        >
-          <p>
-            Hi <b>Davis</b>, please keep in mind:
-          </p>
-          <span>
-            1. I am fetching the current Price and historical price of assets
-            from the <b>free coingecko API</b>. The free version is slow and
-            does not give you the exact price of the asset, but it gives you an
-            approximate price.
-          </span>
-          <br />
-          <span>
-            2. The <b>unclaimed Fee</b> data might be inaccurate for positions
-            (and subsequent calculations). This is a known issue in the Uniswap
-            V3 subgraphs. All subgraphs data are not reliable and can be
-            outdated. Correct way is to directly index chain data. But I'm using
-            it for this demo since it's free.
-          </span>
-        </div>
       </div>
 
       {positionsList?.length > 0 && (
