@@ -16,7 +16,7 @@ const coinListCache = new Map();
 // This function now uses a server-side cache instead of localStorage
 export const getCoinsList = async () => {
   const cacheKey = "coinListData";
-  const CACHE_DURATION = 60 * 60 * 2000; // 1 hour
+  const CACHE_DURATION = 60 * 60 * 253000; // 1 hour
   const cachedItem = coinListCache.get(cacheKey);
 
   if (cachedItem && Date.now() - cachedItem.timestamp < CACHE_DURATION) {

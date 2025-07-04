@@ -85,8 +85,8 @@ const PositionCard = ({ position }) => (
         </li>
         <li>
           <strong>Claimed Fees:</strong>{" "}
-          {position.feesInfo?.collectedFeesToken0} {position.pool.token0.symbol}{" "}
-          + {position.feesInfo?.collectedFeesToken1}{" "}
+          {position.feesInfo?.token0FeesCollected} {position.pool.token0.symbol}{" "}
+          + {position.feesInfo?.token1FeesCollected}{" "}
           {position.pool.token1.symbol}
         </li>
         <li>

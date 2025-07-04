@@ -1,6 +1,7 @@
 import { Token } from "@uniswap/sdk-core";
 import { Pool, Position } from "@uniswap/v3-sdk";
 import { gql } from "@apollo/client";
+import { getWithdrawalLogs } from "./events";
 
 export const GET_USER_POSITIONS = gql`
   query GetUserPositions($walletAddress: String!) {
@@ -18,6 +19,8 @@ export const GET_USER_POSITIONS = gql`
       feeGrowthInside1LastX128
       collectedFeesToken0
       collectedFeesToken1
+      withdrawnToken0
+      withdrawnToken1
       tickLower {
         tickIdx
         price0
@@ -238,6 +241,8 @@ export const calculateTotalFeesUSD = async (positionData) => {
     feeGrowthInside1LastX128,
     collectedFeesToken0,
     collectedFeesToken1,
+    withdrawnToken0,
+    withdrawnToken1,
   } = positionData;
 
   const Q128 = BigInt(2) ** BigInt(128);
@@ -295,10 +300,10 @@ export const calculateTotalFeesUSD = async (positionData) => {
   console.log("price1", price1);
 
   const unclaimedFeesUSD = unclaimedFees0 * price0 + unclaimedFees1 * price1;
-  const token0FeesCollected = parseFloat(collectedFeesToken0);
-  const token1FeesCollected = parseFloat(collectedFeesToken1);
-  console.log("IIIIIIIItoken0FeesCollected", token0FeesCollected);
-  console.log("XXXXXXXXtoken1FeesCollected", token1FeesCollected);
+
+  const token0FeesCollected = collectedFeesToken0 - withdrawnToken0;
+  const token1FeesCollected = collectedFeesToken1 - withdrawnToken1;
+
   const claimedFeesUSD =
     token0FeesCollected * price0 + token1FeesCollected * price1;
 
@@ -307,8 +312,8 @@ export const calculateTotalFeesUSD = async (positionData) => {
   return {
     unclaimedFees0,
     unclaimedFees1,
-    collectedFeesToken0,
-    collectedFeesToken1,
+    token0FeesCollected,
+    token1FeesCollected,
     totalFeesUSD,
     unclaimedFeesUSD,
     claimedFeesUSD,
@@ -379,4 +384,15 @@ const fetchPriceFromServer = async (tokenAddress, date = null) => {
     console.error(error);
     return 0;
   }
+};
+
+export const getWithdrawalHistory = async (position) => {
+  const history = await getWithdrawalLogs(
+    "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+    position.owner,
+    position.tickLower.tickIdx,
+    position.tickUpper.tickIdx
+  );
+  console.log("history", history);
+  return history;
 };

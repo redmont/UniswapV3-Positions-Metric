@@ -56,19 +56,6 @@ const HomePage = () => {
 
       console.log("PositionsYYY", data.positions);
 
-      //   const { data2 } = await graphClient.query({
-      //     query: EVENTS_HISTORY_QUERY,
-      //     variables: {
-      //       poolAddress:
-      //         "0xf763bb342eb3d23c02ccb86312422fe0c1c17e94".toLowerCase(),
-      //       userAddress:
-      //         "0x365A7552E71f8127a0d6c3d48632f5f9Ab210ADa".toLowerCase(),
-      //     },
-      //   });
-
-      //   console.log("EventsYYY", data2);
-      //   return;
-
       const positionList = data.positions.map((pos) => {
         const isActive = getPositionStatus(pos) === "In Range";
         return {
