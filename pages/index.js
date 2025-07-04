@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { gql } from "@apollo/client";
-import graphClient from "../utils/apolloClient";
+import {
+  graphClient1,
+  graphClient2,
+  mergePositionData,
+} from "../utils/apolloClient";
 import {
   getCoinsListFromLocalStorage,
   getCoinsList,
@@ -13,24 +17,14 @@ import {
   getInitialDepositValueInUSD,
   calculateCurrentPositionValueUSD,
   calculateTotalFeesUSD,
+  getTotalFeesUSD,
   totalPnlUSD,
   calculateAprApy,
-  GET_USER_POSITIONS,
+  GET_USER_POSITIONS1,
+  GET_USER_POSITIONS2,
   EVENTS_HISTORY_QUERY,
+  getPositionStatus,
 } from "../services/uniswap";
-
-function getPositionStatus(position) {
-  const { tickLower, tickUpper, pool } = position;
-  const currentTick = parseInt(pool.tick, 10);
-  const lowerTick = parseInt(tickLower.tickIdx, 10);
-  const upperTick = parseInt(tickUpper.tickIdx, 10);
-
-  if (currentTick >= lowerTick && currentTick <= upperTick) {
-    return "In Range";
-  } else {
-    return "Out of Range";
-  }
-}
 
 const HomePage = () => {
   const [walletAddress, setWalletAddress] = useState("");
@@ -49,14 +43,26 @@ const HomePage = () => {
     console.log("allCoins", allCoins);
 
     try {
-      const { data } = await graphClient.query({
-        query: GET_USER_POSITIONS,
-        variables: { walletAddress: walletAddress.toLowerCase() },
-      });
+      const [result1, result2] = await Promise.all([
+        graphClient1.query({
+          query: GET_USER_POSITIONS1,
+          variables: { walletAddress: walletAddress.toLowerCase() },
+        }),
+        graphClient2.query({
+          query: GET_USER_POSITIONS2,
+          variables: { walletAddress: walletAddress.toLowerCase() },
+        }),
+      ]);
 
-      console.log("PositionsYYY", data.positions);
+      const data1 = result1.data;
+      const data2 = result2.data;
+      console.log("PositionsYYY", data1.positions);
+      console.log("PositionsYYY", data2.positions);
 
-      const positionList = data.positions.map((pos) => {
+      const positions = mergePositionData(data1.positions, data2.positions);
+      console.log("positionsFFFFFF", positions);
+
+      const positionList = positions.map((pos) => {
         const isActive = getPositionStatus(pos) === "In Range";
         return {
           ...pos,
@@ -106,26 +112,31 @@ const HomePage = () => {
             pos
           );
 
+          // is Active
+          const isActive = currentPositionInfo.currentPositionUSD > 0;
+
           // Fees
-          const feesInfo = await calculateTotalFeesUSD(pos);
+          const feesInfo = await getTotalFeesUSD(pos);
           console.log("feesInfo", feesInfo);
 
           // Total PnL
           const totalPnlInUSD = await totalPnlUSD(
-            initialPositionInfo.initialTotalDepositUSD,
+            pos.amountDepositedUSD,
             currentPositionInfo.currentPositionUSD,
-            feesInfo.totalFeesUSD
+            pos.amountWithdrawnUSD,
+            feesInfo.totalEarnedFeesUSD
           );
 
           // APR/APY
           const aprApy = calculateAprApy(
-            feesInfo.totalFeesUSD,
-            initialPositionInfo.initialTotalDepositUSD,
+            feesInfo.totalEarnedFeesUSD,
+            pos.amountDepositedUSD,
             createdAtTimestamp
           );
 
           return {
             ...pos,
+            isActive,
             currentPrice,
             lowerTickPrice,
             upperTickPrice,
@@ -166,7 +177,7 @@ const HomePage = () => {
         <div>
           <h1 className="text-2xl font-bold mb-4">Positions</h1>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <h3>Active Positions: </h3>
+            <h3>In Range Positions: </h3>
 
             {positionsList
               .filter((position) => position.isActive)
@@ -179,7 +190,7 @@ const HomePage = () => {
                   {position.id}{" "}
                 </button>
               ))}
-            <h3>InActive Positions: </h3>
+            <h3>Out of Range Positions: </h3>
 
             {positionsList
               .filter((position) => !position.isActive)

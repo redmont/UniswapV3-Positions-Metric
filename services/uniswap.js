@@ -3,7 +3,59 @@ import { Pool, Position } from "@uniswap/v3-sdk";
 import { gql } from "@apollo/client";
 import { getWithdrawalLogs } from "./events";
 
-export const GET_USER_POSITIONS = gql`
+export const GET_USER_POSITIONS1 = gql`
+  query GetUserPositions($walletAddress: String!) {
+    positions(
+      orderBy: pool__createdAtTimestamp
+      where: { owner: $walletAddress }
+      first: 10
+    ) {
+      id
+      owner
+      depositedToken0
+      depositedToken1
+      collectedToken0
+      collectedToken1
+      collectedFeesToken0
+      collectedFeesToken1
+      withdrawnToken0
+      withdrawnToken1
+      amountWithdrawnUSD
+      amountCollectedUSD
+      amountDepositedUSD
+      pool {
+        id
+        feeTier
+        tick
+        sqrtPrice
+        token0Price
+        token1Price
+        collectedFeesUSD
+        collectedFeesToken1
+        collectedFeesToken0
+        liquidity
+        token0 {
+          id
+          symbol
+          name
+          decimals
+        }
+        token1 {
+          id
+          symbol
+          name
+          decimals
+        }
+      }
+      # This transaction field holds the ID of the creation transaction
+      transaction {
+        id
+        timestamp
+      }
+    }
+  }
+`;
+export const GET_USER_POSITIONS2 = gql`
   query GetUserPositions($walletAddress: String!) {
     positions(
       orderBy: pool__createdAtTimestamp
@@ -21,6 +73,7 @@ export const GET_USER_POSITIONS = gql`
       collectedFeesToken1
       withdrawnToken0
       withdrawnToken1
+      tickLower
       tickLower {
         tickIdx
         price0
@@ -28,6 +81,7 @@ export const GET_USER_POSITIONS = gql`
         feeGrowthOutside0X128
         feeGrowthOutside1X128
       }
+      tickUpper
       tickUpper {
         tickIdx
         price0
@@ -124,6 +178,19 @@ export const EVENTS_HISTORY_QUERY = gql`
 
 export function tickToPrice(tick) {
   return Math.pow(1.0001, tick);
+}
+
+export function getPositionStatus(position) {
+  const { tickLower, tickUpper, pool } = position;
+  const currentTick = parseInt(pool.tick, 10);
+  const lowerTick = parseInt(tickLower.tickIdx, 10);
+  const upperTick = parseInt(tickUpper.tickIdx, 10);
+
+  if (currentTick >= lowerTick && currentTick <= upperTick) {
+    return "In Range";
+  } else {
+    return "Out of Range";
+  }
 }
 
 export const getInitialDepositValueInUSD = async (position) => {
@@ -231,6 +298,42 @@ export const calculateCurrentPositionValueUSD = async (
   return { currentPositionUSD, value0, value1, amount0, amount1 };
 };
 
+export const getTotalFeesUSD = async (positionData) => {
+  const {
+    collectedToken0,
+    collectedToken1,
+    withdrawnToken0,
+    withdrawnToken1,
+    pool,
+  } = positionData;
+  const totalClaimedFeesToken0 = collectedToken0 - withdrawnToken0;
+  const totalClaimedFeesToken1 = collectedToken1 - withdrawnToken1;
+
+  const price0 = await fetchPriceFromServer(pool.token0.id);
+  const price1 = await fetchPriceFromServer(pool.token1.id);
+
+  console.log("price0", price0);
+  console.log("price1", price1);
+
+  const totalClaimedFeesUSD =
+    totalClaimedFeesToken0 * price0 + totalClaimedFeesToken1 * price1;
+
+  const { unclaimedFees0, unclaimedFees1, unclaimedFeesUSD } =
+    await calculateTotalFeesUSD(positionData);
+
+  const totalEarnedFeesUSD = unclaimedFeesUSD + totalClaimedFeesUSD;
+
+  return {
+    unclaimedFees0,
+    unclaimedFees1,
+    unclaimedFeesUSD,
+    totalClaimedFeesUSD,
+    totalClaimedFeesToken0,
+    totalClaimedFeesToken1,
+    totalEarnedFeesUSD,
+  };
+};
+
 export const calculateTotalFeesUSD = async (positionData) => {
   const {
     pool,
@@ -296,10 +399,11 @@ export const calculateTotalFeesUSD = async (positionData) => {
   const price0 = await fetchPriceFromServer(pool.token0.id);
   const price1 = await fetchPriceFromServer(pool.token1.id);
 
-  console.log("price0", price0);
-  console.log("price1", price1);
+  console.log("price0", unclaimedFees0, price0);
+  console.log("price1", unclaimedFees1, price1);
 
   const unclaimedFeesUSD = unclaimedFees0 * price0 + unclaimedFees1 * price1;
+  console.log("unclaimedFeesUSD", unclaimedFeesUSD);
 
   const token0FeesCollected = collectedFeesToken0 - withdrawnToken0;
   const token1FeesCollected = collectedFeesToken1 - withdrawnToken1;
@@ -320,8 +424,17 @@ export const calculateTotalFeesUSD = async (positionData) => {
   };
 };
 
-export const totalPnlUSD = async (InitialUSD, CurrentUSD, TotalFeesUSD) => {
-  return CurrentUSD - InitialUSD + TotalFeesUSD;
+export const totalPnlUSD = async (
+  InitialUSD,
+  CurrentUSD,
+  amountWithdrawnUSD,
+  TotalFeesUSD
+) => {
+  console.log("amountWithdrawnUSD", amountWithdrawnUSD);
+  console.log("InitialUSD", InitialUSD);
+  console.log("CurrentUSD", CurrentUSD);
+  console.log("TotalFeesUSD", TotalFeesUSD);
+  return CurrentUSD + amountWithdrawnUSD - InitialUSD + TotalFeesUSD;
 };
 
 export const calculateAprApy = (
@@ -356,6 +469,7 @@ export const calculateAprApy = (
   const apy = (Math.pow(1 + dailyRate, 365) - 1) * 100;
 
   return {
+    positionAgeInDays,
     apr: isFinite(apr) ? apr : 0, // Ensure we don't return Infinity or NaN
     apy: isFinite(apy) ? apy : 0,
   };
@@ -390,8 +504,8 @@ export const getWithdrawalHistory = async (position) => {
   const history = await getWithdrawalLogs(
     "0xc36442b4a4522e871399cd717abdd847ab11fe88",
     position.owner,
-    position.tickLower.tickIdx,
-    position.tickUpper.tickIdx
+    position.tickLower,
+    position.tickUpper
   );
   console.log("history", history);
   return history;

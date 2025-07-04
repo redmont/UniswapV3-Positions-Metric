@@ -3,7 +3,9 @@
 const PositionCard = ({ position }) => (
   <div className="card bg-base-100 shadow-xl">
     <div className="card-body">
-      <h2 className="card-title">Position ID: {position.id}</h2>
+      <h2 className="card-title">
+        Position ID: {position.id} ({position.isActive ? "Active" : "Inactive"})
+      </h2>
 
       <p>
         <strong>Tokens:</strong> {position.pool.token0.symbol} /{" "}
@@ -36,7 +38,7 @@ const PositionCard = ({ position }) => (
           {position.initialPositionInfo.depositedToken1}{" "}
           {position.pool.token1.symbol}
         </li>
-        <li>
+        {/* <li>
           <strong>Prices of Assets at Deposit:</strong>{" "}
           {position.initialPositionInfo.initialToken0PriceinUSD}{" "}
           {position.pool.token0.symbol}/USD ,{" "}
@@ -49,10 +51,9 @@ const PositionCard = ({ position }) => (
           {position.pool.token0.symbol} +{" "}
           {position.initialPositionInfo.initialToken1InUSD}{" "}
           {position.pool.token1.symbol}
-        </li>
+        </li> */}
         <li>
-          <strong>Total (in USD):</strong>{" "}
-          {position.initialPositionInfo.initialTotalDepositUSD}{" "}
+          <strong>Total (in USD):</strong> {position.amountDepositedUSD}{" "}
         </li>
       </p>
       <p>
@@ -85,17 +86,18 @@ const PositionCard = ({ position }) => (
         </li>
         <li>
           <strong>Claimed Fees:</strong>{" "}
-          {position.feesInfo?.token0FeesCollected} {position.pool.token0.symbol}{" "}
-          + {position.feesInfo?.token1FeesCollected}{" "}
+          {position.feesInfo?.totalClaimedFeesToken0}{" "}
+          {position.pool.token0.symbol} +{" "}
+          {position.feesInfo?.totalClaimedFeesToken1}{" "}
           {position.pool.token1.symbol}
         </li>
         <li>
           <strong>Claimed Fees (in USD):</strong>{" "}
-          {position.feesInfo?.claimedFeesUSD}{" "}
+          {position.feesInfo?.totalClaimedFeesUSD}{" "}
         </li>
         <li>
           <strong>Total earned Fees (in USD):</strong>{" "}
-          {position.feesInfo?.totalFeesUSD}{" "}
+          {position.feesInfo?.totalEarnedFeesUSD}{" "}
         </li>
       </p>
       <p>
@@ -103,9 +105,30 @@ const PositionCard = ({ position }) => (
         {new Date(position.createdAtTimestamp * 1000).toLocaleString()}
       </p>
       <p>
+        <strong>Withdrawal:</strong>{" "}
+        <li>
+          <strong>Amount Withdrawn (in USD):</strong>{" "}
+          {position.amountWithdrawnUSD} USD
+        </li>
+        <li>
+          <strong>Token Withdrawal:</strong> {position.withdrawnToken0}{" "}
+          {position.pool.token0.symbol} + {position.withdrawnToken1}{" "}
+          {position.pool.token1.symbol}
+        </li>
+      </p>
+      <p>
         <strong>Total PNL:</strong> {position.totalPnlInUSD.toFixed(2)} USD
         <br />
-        (Current USD Value - Initial USD Value + Total Fees Earned)
+        (Current USD Value + Amount Withdrawn USD + Total Fees Earned USD -
+        Initial Value USD)
+        <br />
+        (${position.currentPositionUSD || 0} + ${position.amountWithdrawnUSD} +
+        ${position.feesInfo?.totalEarnedFeesUSD} - $
+        {position.amountDepositedUSD})
+      </p>
+      <p>
+        <strong>Position Age(In Days):</strong>
+        {position.aprApy?.positionAgeInDays}
       </p>
       <p>
         <strong>APR/APY:</strong>
