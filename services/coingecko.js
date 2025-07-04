@@ -3,17 +3,15 @@ import axios from "axios";
 const options = {
   headers: {
     "Content-Type": "application/json",
-    // This API key is now safe on the server
+
     "x-cg-demo-api-key": process.env.COINGECKO_API_KEY || "",
   },
 };
 
-// Caches for prices and the main coin list
 const priceCache = new Map();
 const historicalPriceCache = new Map();
 const coinListCache = new Map();
 
-// This function now uses a server-side cache instead of localStorage
 export const getCoinsList = async () => {
   const cacheKey = "coinListData";
   const CACHE_DURATION = 60 * 60 * 253000; // 1 hour
@@ -59,7 +57,6 @@ export const getPriceAtTimestamp = async (tokenAddress1, date) => {
       return cachedItem.price;
     }
 
-    // ... (rest of the function is the same, just using the new getCoinsList)
     const response = await axios.get(
       `https://api.coingecko.com/api/v3/coins/${coinId1}/history?date=${date}&localization=false`,
       options
@@ -80,8 +77,6 @@ export const getPriceAtTimestamp = async (tokenAddress1, date) => {
 };
 
 export const getCurrentPrice = async (tokenAddress1, tokenAddress2) => {
-  // ... (this function can remain the same, as it will call the new getCoinsList)
-  // ... it will now use the server-side cache automatically.
   const CACHE_DURATION = 5 * 60 * 1000;
   try {
     const allCoins = await getCoinsList();
@@ -167,10 +162,8 @@ export const findCoinIdByEthereumAddress = (coinsList, contractAddress) => {
     return null;
   }
 
-  // Normalize the address to lowercase for a case-insensitive comparison
   const targetAddress = contractAddress.toLowerCase();
 
-  // Use the .find() method to search the array
   const foundCoin = coinsList.find(
     (coin) =>
       coin.platforms &&
@@ -178,6 +171,5 @@ export const findCoinIdByEthereumAddress = (coinsList, contractAddress) => {
       coin.platforms.ethereum.toLowerCase() === targetAddress
   );
 
-  // Return the coin's id if found, otherwise return null
   return foundCoin ? foundCoin.id : null;
 };

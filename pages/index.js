@@ -1,7 +1,6 @@
 // pages/index.js
 
 import { useState } from "react";
-import { gql } from "@apollo/client";
 import {
   graphClient1,
   graphClient2,
@@ -16,14 +15,13 @@ import {
   tickToPrice,
   getInitialDepositValueInUSD,
   calculateCurrentPositionValueUSD,
-  calculateTotalFeesUSD,
   getTotalFeesUSD,
   totalPnlUSD,
   calculateAprApy,
   GET_USER_POSITIONS1,
   GET_USER_POSITIONS2,
-  EVENTS_HISTORY_QUERY,
   getPositionStatus,
+  getWithdrawalInfo,
 } from "../services/uniswap";
 
 const HomePage = () => {
@@ -37,6 +35,8 @@ const HomePage = () => {
 
   const fetchPositions = async () => {
     if (!walletAddress) return;
+    setPositionsList([]);
+    setPositions([]);
     setLoading(true);
 
     const allCoins = await getCoinsList();
@@ -79,6 +79,7 @@ const HomePage = () => {
 
   const getPositionInfo = async (positionId) => {
     console.log("positionId", positionId);
+    setPositions([]);
     setLoading(true);
     const formattedPositions = await Promise.all(
       positionsList
@@ -117,20 +118,21 @@ const HomePage = () => {
 
           // Fees
           const feesInfo = await getTotalFeesUSD(pos);
-          console.log("feesInfo", feesInfo);
+
+          const withdrawalInfo = await getWithdrawalInfo(pos);
 
           // Total PnL
           const totalPnlInUSD = await totalPnlUSD(
             pos.amountDepositedUSD,
             currentPositionInfo.currentPositionUSD,
-            pos.amountWithdrawnUSD,
+            withdrawalInfo.totalWithdrawnUSD,
             feesInfo.totalEarnedFeesUSD
           );
 
           // APR/APY
           const aprApy = calculateAprApy(
             feesInfo.totalEarnedFeesUSD,
-            pos.amountDepositedUSD,
+            initialPositionInfo.initialTotalDepositUSD,
             createdAtTimestamp
           );
 
@@ -145,6 +147,7 @@ const HomePage = () => {
             currentPositionInfo,
             feesInfo,
             totalPnlInUSD,
+            withdrawalInfo,
             aprApy,
             positionStatus,
           };
@@ -158,19 +161,68 @@ const HomePage = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Uniswap V3 Position Viewer</h1>
-      <div className="flex gap-2 mb-4">
-        <input
-          type="text"
-          value={walletAddress}
-          onChange={(e) => setWalletAddress(e.target.value)}
-          placeholder="Enter wallet address"
-          className="input input-bordered w-full"
-          style={{ width: "300px" }}
-        />
-        <button onClick={fetchPositions} className="btn btn-primary">
-          {loading ? "Fetching..." : "Fetch Positions"}
-        </button>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          width: "80%",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", width: "60%" }}>
+          <h1 className="text-2xl font-bold mb-4">
+            Uniswap V3 Position Viewer
+          </h1>
+          <div className="flex gap-2 mb-4" style={{ flexDirection: "row" }}>
+            <input
+              type="text"
+              value={walletAddress}
+              onChange={(e) => setWalletAddress(e.target.value)}
+              placeholder="Enter wallet address"
+              className="input input-bordered w-full"
+              style={{ width: "300px" }}
+            />
+            <button
+              onClick={fetchPositions}
+              className="btn btn-primary"
+              style={{ marginRight: 10, marginLeft: 10 }}
+            >
+              {loading ? "Fetching..." : "Fetch Positions"}
+            </button>
+            <br />
+            <br />
+            Sample Wallets:
+            <br />
+            0xbf0e2de41e3b7f0c7c72e11f04760b787f082460
+            0xf02f301f14f4ae52df21da91bab40993a3e3d07c
+          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            marginRight: "10%",
+            width: "60%",
+          }}
+        >
+          <p>
+            Hi <b>Davis</b>, please keep in mind:
+          </p>
+          <span>
+            1. I am fetching the current Price and historical price of assets
+            from the <b>free coingecko API</b>. The free version is slow and
+            does not give you the exact price of the asset, but it gives you an
+            approximate price.
+          </span>
+          <br />
+          <span>
+            2. The <b>unclaimed Fee</b> data might be inaccurate for positions
+            (and subsequent calculations). This is a known issue in the Uniswap
+            V3 subgraphs. All subgraphs data are not reliable and can be
+            outdated. Correct way is to directly index chain data. But I'm using
+            it for this demo since it's free.
+          </span>
+        </div>
       </div>
 
       {positionsList?.length > 0 && (

@@ -16,29 +16,21 @@ export const graphClient2 = new ApolloClient({
 });
 
 export const mergePositionData = (positions1, positions2) => {
-  // Use a Map for efficient lookup by position ID.
   const positionsMap = new Map();
 
-  // 1. Add all positions from the first list to the map.
   for (const position of positions1) {
     positionsMap.set(position.id, position);
   }
 
-  // 2. Loop through the second list to merge and add positions.
   for (const position of positions2) {
-    // Check if this position already exists from the first list.
     const existingPosition = positionsMap.get(position.id);
 
     if (existingPosition) {
-      // If it exists, merge them. The spread operator `...` ensures that
-      // properties from the second position (the richer one) overwrite the first.
       positionsMap.set(position.id, { ...existingPosition, ...position });
     } else {
-      // If it's a new position only found in the second list, just add it.
       positionsMap.set(position.id, position);
     }
   }
 
-  // 3. Convert the map back to an array for the final result.
   return Array.from(positionsMap.values());
 };

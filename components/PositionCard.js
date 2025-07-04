@@ -10,6 +10,9 @@ const PositionCard = ({ position }) => (
       <p>
         <strong>Tokens:</strong> {position.pool.token0.symbol} /{" "}
         {position.pool.token1.symbol}
+        <br />
+        <strong>Contract Address:</strong> {position.pool.token0.id} /{" "}
+        {position.pool.token1.id}
       </p>
       <p>
         <strong>Fee Tier:</strong> {position.pool.feeTier / 10000}%
@@ -38,7 +41,7 @@ const PositionCard = ({ position }) => (
           {position.initialPositionInfo.depositedToken1}{" "}
           {position.pool.token1.symbol}
         </li>
-        {/* <li>
+        <li>
           <strong>Prices of Assets at Deposit:</strong>{" "}
           {position.initialPositionInfo.initialToken0PriceinUSD}{" "}
           {position.pool.token0.symbol}/USD ,{" "}
@@ -51,9 +54,10 @@ const PositionCard = ({ position }) => (
           {position.pool.token0.symbol} +{" "}
           {position.initialPositionInfo.initialToken1InUSD}{" "}
           {position.pool.token1.symbol}
-        </li> */}
+        </li>
         <li>
-          <strong>Total (in USD):</strong> {position.amountDepositedUSD}{" "}
+          <strong>Total (in USD):</strong>{" "}
+          {position.initialPositionInfo.initialTotalDepositUSD}{" "}
         </li>
       </p>
       <p>
@@ -64,9 +68,10 @@ const PositionCard = ({ position }) => (
           {position.pool.token1.symbol}
         </li>
         <li>
-          <strong>Value (in USD):</strong> {position.currentPositionInfo.value0}{" "}
-          {position.pool.token0.symbol} + {position.currentPositionInfo.value1}{" "}
-          {position.pool.token1.symbol}
+          <strong>Price (in USD):</strong> {position.currentPositionInfo.price0}{" "}
+          {position.pool.token0.symbol}/USD +{" "}
+          {position.currentPositionInfo.price1} {position.pool.token1.symbol}
+          /USD
         </li>
         <li>
           <strong>Total (in USD):</strong>{" "}
@@ -75,15 +80,20 @@ const PositionCard = ({ position }) => (
       </p>
       <p>
         <strong>Fees:</strong>{" "}
-        <li>
-          <strong>Unclaimed Fees:</strong> {position.feesInfo?.unclaimedFees0}{" "}
-          {position.pool.token0.symbol} + {position.feesInfo?.unclaimedFees1}{" "}
-          {position.pool.token1.symbol}
-        </li>
-        <li>
-          <strong>Unclaimed Fees (in USD):</strong>{" "}
-          {position.feesInfo?.unclaimedFeesUSD}{" "}
-        </li>
+        {position.feesInfo?.unclaimedFees0 >= 0 && (
+          <>
+            <li>
+              <strong>Unclaimed Fees:</strong>{" "}
+              {position.feesInfo?.unclaimedFees0} {position.pool.token0.symbol}{" "}
+              + {position.feesInfo?.unclaimedFees1}{" "}
+              {position.pool.token1.symbol}
+            </li>
+            <li>
+              <strong>Unclaimed Fees (in USD):</strong>{" "}
+              {position.feesInfo?.unclaimedFeesUSD}{" "}
+            </li>
+          </>
+        )}
         <li>
           <strong>Claimed Fees:</strong>{" "}
           {position.feesInfo?.totalClaimedFeesToken0}{" "}
@@ -95,10 +105,12 @@ const PositionCard = ({ position }) => (
           <strong>Claimed Fees (in USD):</strong>{" "}
           {position.feesInfo?.totalClaimedFeesUSD}{" "}
         </li>
-        <li>
-          <strong>Total earned Fees (in USD):</strong>{" "}
-          {position.feesInfo?.totalEarnedFeesUSD}{" "}
-        </li>
+        {position.feesInfo?.unclaimedFees0 >= 0 && (
+          <li>
+            <strong>Total earned Fees (in USD):</strong>{" "}
+            {position.feesInfo?.totalEarnedFeesUSD}{" "}
+          </li>
+        )}
       </p>
       <p>
         <strong>Creation Date:</strong>{" "}
@@ -107,62 +119,84 @@ const PositionCard = ({ position }) => (
       <p>
         <strong>Withdrawal:</strong>{" "}
         <li>
-          <strong>Amount Withdrawn (in USD):</strong>{" "}
-          {position.amountWithdrawnUSD} USD
-        </li>
-        <li>
-          <strong>Token Withdrawal:</strong> {position.withdrawnToken0}{" "}
-          {position.pool.token0.symbol} + {position.withdrawnToken1}{" "}
+          <strong>Token Withdrawal:</strong>{" "}
+          {position.withdrawalInfo.withdrawnToken0}{" "}
+          {position.pool.token0.symbol} +{" "}
+          {position.withdrawalInfo.withdrawnToken1}{" "}
           {position.pool.token1.symbol}
         </li>
-      </p>
-      <p>
-        <strong>Total PNL:</strong> {position.totalPnlInUSD.toFixed(2)} USD
-        <br />
-        (Current USD Value + Amount Withdrawn USD + Total Fees Earned USD -
-        Initial Value USD)
-        <br />
-        (${position.currentPositionUSD || 0} + ${position.amountWithdrawnUSD} +
-        ${position.feesInfo?.totalEarnedFeesUSD} - $
-        {position.amountDepositedUSD})
+        <li>
+          <strong>Current Price (in USD):</strong>{" "}
+          {position.currentPositionInfo.price0} {position.pool.token0.symbol}
+          /USD + {position.currentPositionInfo.price1}{" "}
+          {position.pool.token1.symbol}
+          /USD
+        </li>
+        <li>
+          <strong>Token Withdrawal in USD:</strong>{" "}
+          {position.withdrawalInfo.withdrawnToken0USD}{" "}
+          {position.pool.token0.symbol} +{" "}
+          {position.withdrawalInfo.withdrawnToken1USD}{" "}
+          {position.pool.token1.symbol}
+        </li>
+        <li>
+          <strong>Total Amount Withdrawn (in USD):</strong>{" "}
+          {position.withdrawalInfo.totalWithdrawnUSD} USD
+        </li>
       </p>
       <p>
         <strong>Position Age(In Days):</strong>
         {position.aprApy?.positionAgeInDays}
       </p>
-      <p>
-        <strong>APR/APY:</strong>
-        <li>
-          <strong>APR:</strong> {position.aprApy?.apr?.toFixed(2)}%
-          <br />
+      {position.feesInfo?.unclaimedFees0 >= 0 && (
+        <>
           <p>
-            Fee APR Logic:
+            <strong>Total PNL:</strong> {position.totalPnlInUSD.toFixed(2)} USD
             <br />
-            1. (Total Fees / Initial Deposit) = Return rate for the entire
-            period <br />
-            2. We annualize it by dividing by the number of days and multiplying
-            by 365.
+            (Current USD Value + Amount Withdrawn USD + Total Fees Earned USD -
+            Initial Value USD)
             <br />
-            APR = (totalFeesUSD / initialDepositUSD) * (365 / positionAgeInDays)
-            * 100;
+            (${position.currentPositionInfo.currentPositionUSD || 0} + $
+            {position.withdrawalInfo.totalWithdrawnUSD} + $
+            {position.feesInfo?.totalEarnedFeesUSD} - $
+            {position.amountDepositedUSD})
           </p>
-        </li>
-        <li>
-          <strong>APY:</strong> {position.aprApy?.apy?.toFixed(2)}%{" "}
-          <p>
-            Fee APY Logic:
-            <br />
-            1. First, find the effective daily rate of return
-            <br />
-            DailyRate = totalFeesUSD / initialDepositUSD / positionAgeInDays;
-            <br />
-            2. Then, compound that daily rate over 365 days
-            <br />
-            APY = (Math.pow(1 + dailyRate, 365) - 1) * 100;
-          </p>
-        </li>
-      </p>
 
+          <p>
+            <strong>APR/APY:</strong>
+            <li>
+              <strong>APR:</strong> {position.aprApy?.apr?.toFixed(2)}%
+              <br />
+              <p>
+                Fee APR Logic:
+                <br />
+                1. (Total Fees / Initial Deposit) = Return rate for the entire
+                period <br />
+                2. We annualize it by dividing by the number of days and
+                multiplying by 365.
+                <br />
+                APR = (totalFeesUSD / initialDepositUSD) * (365 /
+                positionAgeInDays) * 100;
+              </p>
+            </li>
+            <li>
+              <strong>APY:</strong> {position.aprApy?.apy?.toFixed(2)}%{" "}
+              <p>
+                Fee APY Logic:
+                <br />
+                1. First, find the effective daily rate of return
+                <br />
+                DailyRate = totalFeesUSD / initialDepositUSD /
+                positionAgeInDays;
+                <br />
+                2. Then, compound that daily rate over 365 days
+                <br />
+                APY = (Math.pow(1 + dailyRate, 365) - 1) * 100;
+              </p>
+            </li>
+          </p>
+        </>
+      )}
       {/* <p>
         <strong>Initial Deposit:</strong> $
         {position.initialDepositUSD.toFixed(2)}
